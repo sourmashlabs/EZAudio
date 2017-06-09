@@ -377,4 +377,16 @@ typedef void (^EZAudioWaveformDataCompletionBlock)(float **waveformData, int len
 
 //------------------------------------------------------------------------------
 
+/**
+ Asynchronously pulls the waveform amplitude data for a specfic frame range into a float array for the receiver.
+ @param numberOfPoints A UInt32 representing the number of data points you need. The higher the number of points the more detailed the waveform will be.
+ @param startFrame A SInt64 representing the start frame for the data points
+ @param endFrame A SInt64 representing the end frame for the data points
+
+ @param completion A EZAudioWaveformDataCompletionBlock that executes when the waveform data has been extracted. Provides a `EZAudioFloatData` instance containing the waveform data for all audio channels.
+ */
+- (void)getWaveformDataWithNumberOfPoints:(UInt32)numberOfPoints
+                               startFrame:(SInt64)startFrame endFrame:(SInt64)endFrame
+                               completion:(EZAudioWaveformDataCompletionBlock)completion;
+
 @end

@@ -405,6 +405,15 @@ typedef struct
 
 - (EZAudioFloatData *)getWaveformDataWithNumberOfPoints:(UInt32)numberOfPoints
 {
+    return [self getWaveformDataWithNumberOfPoints:numberOfPoints startFrame:0 endFrame:-1];
+}
+
+//------------------------------------------------------------------------------
+
+- (EZAudioFloatData *)getWaveformDataWithNumberOfPoints:(UInt32)numberOfPoints
+                                             startFrame:(SInt64)startFrame
+                                               endFrame:(SInt64)endFrame
+{
     EZAudioFloatData *waveformData;
     if (pthread_mutex_trylock(&_lock) == 0)
     {
@@ -426,11 +435,13 @@ typedef struct
         
         // seek to 0
         [EZAudioUtilities checkResult:ExtAudioFileSeek(self.info->extAudioFileRef,
-                                                       0)
+                                                       startFrame)
                             operation:"Failed to seek frame position within audio file"];
         
         // calculate the required number of frames per buffer
-        SInt64 framesPerBuffer = ((SInt64) self.totalClientFrames / numberOfPoints);
+        SInt64 totalFrames = endFrame > 0 ? endFrame - startFrame : (SInt64) self.totalClientFrames - startFrame;
+        
+        SInt64 framesPerBuffer = (totalFrames / numberOfPoints);
         SInt64 framesPerChannel = framesPerBuffer / channels;
         
         // allocate an audio buffer list
@@ -501,6 +512,26 @@ typedef struct
 {
     [self getWaveformDataWithNumberOfPoints:EZAudioFileWaveformDefaultResolution
                                  completion:waveformDataCompletionBlock];
+}
+
+-(void)getWaveformDataWithNumberOfPoints:(UInt32)numberOfPoints
+                              startFrame:(SInt64)startFrame
+                            endFrame:(SInt64)endFrame
+                              completion:(EZAudioWaveformDataCompletionBlock)completion
+{
+    if (!completion)
+    {
+        return;
+    }
+    
+    // async get waveform data
+    __weak EZAudioFile *weakSelf = self;
+    dispatch_async(self.waveformQueue, ^{
+        EZAudioFloatData *waveformData = [weakSelf getWaveformDataWithNumberOfPoints:numberOfPoints startFrame:startFrame endFrame:endFrame];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            completion(waveformData.buffers, waveformData.bufferSize);
+        });
+    });
 }
 
 //------------------------------------------------------------------------------
